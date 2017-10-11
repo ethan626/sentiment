@@ -13,11 +13,14 @@ Author: Ethan Henderson
 Github @ethan626
 
 """
+
 data = pd.read_csv('ign.csv')
 data['title'] = data['title'].apply(lambda x: x.lower())
 
 len_train_data = int(len(data) * .9)
 len_test_data = len(data) - len_train_data
+
+############## Function Definitions #################3
 
 def count_words(data):
     """ Returns a list of the words from the titles in order of number of occurences """
@@ -32,7 +35,7 @@ def count_words(data):
     return [word for word in word_counter]
         
 def title_to_vector(title, counts):
-    """ Changes the title of a video into an integer valued vector, where each int represents a word. 1 is the most common word."""
+    """ Changes the title of a video into an integer valued vector based on frequency. 1 is the most common word."""
     def get_num():
         """ Yields the numer corresponding to a word in the title. """
         for word in title.split(' '):
@@ -47,15 +50,17 @@ def make_word_vectors(data):
     return np.array([title_to_vector(title, word_list) for title in data])
 
 def make_class_vectors(data):
-    """ Assigns a number for each datum in a data feature """
+    """ Returns a numpy array of the class encoded data """
     types = list(data.unique())
 
     def to_category():
-       """ Yields the number which will encode the datum """ 
+       """ Yields a number representing the encoding of the datum """ 
        for score in data:
            yield types.index(score)
 
     return np.array([num_type for num_type in to_category()])
+
+################## Data Preprocessing #######################
 
 title_sequences= make_word_vectors(data['title']) # Numerically encode the video game titles 
 score_vectors = make_class_vectors(data['score_phrase']) # Numerically encode the score_phrase the game received 
@@ -74,6 +79,18 @@ net = tflearn.fully_connected(net, 11, activation='softmax')
 net = tflearn.regression(net, optimizer='adam', learning_rate=.001, loss='categorical_crossentropy') # Using gradient descent 
 
 model = tflearn.DNN(net, tensorboard_verbose=0)
+model.load('sentiment_model.py')
 
-print('Training...')
-model.fit(train_x, train_y, validation_set=(test_x, test_y), show_metric=True) # Train the network
+if __name__ == '__main__':
+    print('Training...')
+    model.fit(train_x, train_y, validation_set=(test_x, test_y), show_metric=True) # Train the network
+    model.save('sentiment_model.py')  
+
+    score_phrases = data['score_phrase'].unique() # Validation 
+    preds = model.predict(test_x)
+
+    print('Prediction are...')  
+    for score, game in zip(preds, data['title'][:-len_test_data]):
+        print(game, ' - > ', score_phrases[np.argmax(score)])
+    
+
